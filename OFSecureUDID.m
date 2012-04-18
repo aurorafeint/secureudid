@@ -32,7 +32,7 @@
  Public symbols prefixed with OF for inclusion within the OpenFeint library.
  */
 
-#import "SecureUDID.h"
+#import "OFSecureUDID.h"
 #import <UIKit/UIKit.h>
 #import <CommonCrypto/CommonCryptor.h>
 #import <CommonCrypto/CommonDigest.h>
