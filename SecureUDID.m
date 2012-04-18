@@ -28,46 +28,50 @@
  SOFTWARE.
  */
 
+/* 
+ Public symbols prefixed with OF for inclusion within the OpenFeint library.
+ */
+
 #import "SecureUDID.h"
 #import <UIKit/UIKit.h>
 #import <CommonCrypto/CommonCryptor.h>
 #import <CommonCrypto/CommonDigest.h>
 #import <sys/sysctl.h>
 
-#define SUUID_SCHEMA_VERSION        (1)
-#define SUUID_MAX_STORAGE_LOCATIONS (64)
+#define OFSUUID_SCHEMA_VERSION        (1)
+#define OFSUUID_MAX_STORAGE_LOCATIONS (64)
 
-NSString *const SUUIDDefaultIdentifier   = @"00000000-0000-0000-0000-000000000000";
+NSString *const OFSUUIDDefaultIdentifier   = @"00000000-0000-0000-0000-000000000000";
 
-NSString *const SUUIDTypeDataDictionary  = @"public.secureudid";
-NSString *const SUUIDTimeStampKey        = @"SUUIDTimeStampKey";
-NSString *const SUUIDOwnerKey            = @"SUUIDOwnerKey";
-NSString *const SUUIDLastAccessedKey     = @"SUUIDLastAccessedKey";
-NSString *const SUUIDIdentifierKey       = @"SUUIDIdentifierKey";
-NSString *const SUUIDOptOutKey           = @"SUUIDOptOutKey";
-NSString *const SUUIDModelHashKey        = @"SUUIDModelHashKey";
-NSString *const SUUIDSchemaVersionKey    = @"SUUIDSchemaVersionKey";
-NSString *const SUUIDPastboardFileFormat = @"org.secureudid-%d";
+NSString *const OFSUUIDTypeDataDictionary  = @"public.secureudid";
+NSString *const OFSUUIDTimeStampKey        = @"SUUIDTimeStampKey";
+NSString *const OFSUUIDOwnerKey            = @"SUUIDOwnerKey";
+NSString *const OFSUUIDLastAccessedKey     = @"SUUIDLastAccessedKey";
+NSString *const OFSUUIDIdentifierKey       = @"SUUIDIdentifierKey";
+NSString *const OFSUUIDOptOutKey           = @"SUUIDOptOutKey";
+NSString *const OFSUUIDModelHashKey        = @"SUUIDModelHashKey";
+NSString *const OFSUUIDSchemaVersionKey    = @"SUUIDSchemaVersionKey";
+NSString *const OFSUUIDPastboardFileFormat = @"org.secureudid-%d";
 
-NSData       *SUUIDCryptorToData(CCOperation operation, NSData *value, NSData *key);
-NSString     *SUUIDCryptorToString(CCOperation operation, NSData *value, NSData *key);
-NSData       *SUUIDHash(NSData* data);
-NSData       *SUUIDModelHash(void);
+NSData       *OFSUUIDCryptorToData(CCOperation operation, NSData *value, NSData *key);
+NSString     *OFSUUIDCryptorToString(CCOperation operation, NSData *value, NSData *key);
+NSData       *OFSUUIDHash(NSData* data);
+NSData       *OFSUUIDModelHash(void);
 
-void          SUUIDMarkOptedOut(void);
-void          SUUIDMarkOptedIn(void);
-void          SUUIDRemoveAllSecureUDIDData(void);
-NSString     *SUUIDPasteboardNameForNumber(NSInteger number);
-NSInteger     SUUIDStorageLocationForOwnerKey(NSData *key, NSMutableDictionary** dictionary);
-NSDictionary *SUUIDDictionaryForStorageLocation(NSInteger number);
-NSDictionary *SUUIDMostRecentDictionary(void);
-void          SUUIDWriteDictionaryToStorageLocation(NSInteger number, NSDictionary* dictionary);
-void          SUUIDDeleteStorageLocation(NSInteger number);
+void          OFSUUIDMarkOptedOut(void);
+void          OFSUUIDMarkOptedIn(void);
+void          OFSUUIDRemoveAllSecureUDIDData(void);
+NSString     *OFSUUIDPasteboardNameForNumber(NSInteger number);
+NSInteger     OFSUUIDStorageLocationForOwnerKey(NSData *key, NSMutableDictionary** dictionary);
+NSDictionary *OFSUUIDDictionaryForStorageLocation(NSInteger number);
+NSDictionary *OFSUUIDMostRecentDictionary(void);
+void          OFSUUIDWriteDictionaryToStorageLocation(NSInteger number, NSDictionary* dictionary);
+void          OFSUUIDDeleteStorageLocation(NSInteger number);
 
-BOOL          SUUIDValidTopLevelObject(id object);
-BOOL          SUUIDValidOwnerObject(id object);
+BOOL          OFSUUIDValidTopLevelObject(id object);
+BOOL          OFSUUIDValidOwnerObject(id object);
 
-@implementation SecureUDID
+@implementation OFSecureUDID
 
 /*
  Returns a unique id for the device, sandboxed to the domain and salt provided.
@@ -79,25 +83,25 @@ BOOL          SUUIDValidOwnerObject(id object);
 
  */
 + (NSString *)UDIDForDomain:(NSString *)domain usingKey:(NSString *)key {
-    NSString *identifier = SUUIDDefaultIdentifier;
+    NSString *identifier = OFSUUIDDefaultIdentifier;
     
     // Salt the domain to make the crypt keys affectively unguessable.
     NSData *domainAndKey = [[NSString stringWithFormat:@"%@%@", domain, key] dataUsingEncoding:NSUTF8StringEncoding];
-    NSData *ownerKey      = SUUIDHash(domainAndKey);
+    NSData *ownerKey      = OFSUUIDHash(domainAndKey);
     
     // Encrypt the salted domain key and load the pasteboard on which to store data
-    NSData *encryptedOwnerKey = SUUIDCryptorToData(kCCEncrypt, [domain dataUsingEncoding:NSUTF8StringEncoding], ownerKey);
+    NSData *encryptedOwnerKey = OFSUUIDCryptorToData(kCCEncrypt, [domain dataUsingEncoding:NSUTF8StringEncoding], ownerKey);
     
     // @synchronized introduces an implicit @try-@finally, so care needs to be taken with the return value
     @synchronized (self) {
         NSMutableDictionary *topLevelDictionary = nil;
         
         // Retrieve an appropriate storage index for this owner
-        NSInteger ownerIndex = SUUIDStorageLocationForOwnerKey(encryptedOwnerKey, &topLevelDictionary);
+        NSInteger ownerIndex = OFSUUIDStorageLocationForOwnerKey(encryptedOwnerKey, &topLevelDictionary);
         
         // If the model hash key is present, verify it, otherwise add it
-        NSData *storedModelHash = [topLevelDictionary objectForKey:SUUIDModelHashKey];
-        NSData *modelHash       = SUUIDModelHash();
+        NSData *storedModelHash = [topLevelDictionary objectForKey:OFSUUIDModelHashKey];
+        NSData *modelHash       = OFSUUIDModelHash();
         
         if (storedModelHash) {
             if (![modelHash isEqual:storedModelHash]) {
@@ -107,16 +111,16 @@ BOOL          SUUIDValidOwnerObject(id object);
         }
         
         // store the current model hash
-        [topLevelDictionary setObject:modelHash forKey:SUUIDModelHashKey];
+        [topLevelDictionary setObject:modelHash forKey:OFSUUIDModelHashKey];
         
         // check for the opt-out flag and return the default identifier if we find it
-        if ([[topLevelDictionary objectForKey:SUUIDOptOutKey] boolValue] == YES) {
+        if ([[topLevelDictionary objectForKey:OFSUUIDOptOutKey] boolValue] == YES) {
             return identifier;
         }
         
         // If we encounter a schema version greater than we support, there is no simple alternative
         // other than to simulate Opt Out.  Any writes to the store risk corruption.
-        if ([[topLevelDictionary objectForKey:SUUIDSchemaVersionKey] intValue] > SUUID_SCHEMA_VERSION) {
+        if ([[topLevelDictionary objectForKey:OFSUUIDSchemaVersionKey] intValue] > OFSUUID_SCHEMA_VERSION) {
             return identifier;
         }
         
@@ -127,25 +131,25 @@ BOOL          SUUIDValidOwnerObject(id object);
         // Set our last access time and claim ownership for this storage location.
         NSDate* lastAccessDate = [NSDate date];
         
-        [ownerDictionary    setObject:lastAccessDate    forKey:SUUIDLastAccessedKey];
-        [topLevelDictionary setObject:lastAccessDate    forKey:SUUIDTimeStampKey];
-        [topLevelDictionary setObject:encryptedOwnerKey forKey:SUUIDOwnerKey];
+        [ownerDictionary    setObject:lastAccessDate    forKey:OFSUUIDLastAccessedKey];
+        [topLevelDictionary setObject:lastAccessDate    forKey:OFSUUIDTimeStampKey];
+        [topLevelDictionary setObject:encryptedOwnerKey forKey:OFSUUIDOwnerKey];
         
-        [topLevelDictionary setObject:[NSNumber numberWithInt:SUUID_SCHEMA_VERSION] forKey:SUUIDSchemaVersionKey];
+        [topLevelDictionary setObject:[NSNumber numberWithInt:OFSUUID_SCHEMA_VERSION] forKey:OFSUUIDSchemaVersionKey];
         
         // Make sure our owner dictionary is in the top level structure
         [topLevelDictionary setObject:ownerDictionary forKey:encryptedOwnerKey];
         
         
-        NSData *identifierData = [ownerDictionary objectForKey:SUUIDIdentifierKey];
+        NSData *identifierData = [ownerDictionary objectForKey:OFSUUIDIdentifierKey];
         if (identifierData) {
-            identifier = SUUIDCryptorToString(kCCDecrypt, identifierData, ownerKey);
+            identifier = OFSUUIDCryptorToString(kCCDecrypt, identifierData, ownerKey);
             if (!identifier) {
                 // We've failed to decrypt our identifier.  This is a sign of storage corruption.
-                SUUIDDeleteStorageLocation(ownerIndex);
+                OFSUUIDDeleteStorageLocation(ownerIndex);
                 
                 // return here - do not write values back to the store
-                return SUUIDDefaultIdentifier;
+                return OFSUUIDDefaultIdentifier;
             }
         } else {
             // Otherwise, create a new RFC-4122 Version 4 UUID
@@ -155,12 +159,12 @@ BOOL          SUUIDValidOwnerObject(id object);
             CFRelease(uuid);
             
             // Encrypt it for storage.
-            NSData *data = SUUIDCryptorToData(kCCEncrypt, [identifier dataUsingEncoding:NSUTF8StringEncoding], ownerKey);
+            NSData *data = OFSUUIDCryptorToData(kCCEncrypt, [identifier dataUsingEncoding:NSUTF8StringEncoding], ownerKey);
             
-            [ownerDictionary setObject:data forKey:SUUIDIdentifierKey];
+            [ownerDictionary setObject:data forKey:OFSUUIDIdentifierKey];
         }
         
-        SUUIDWriteDictionaryToStorageLocation(ownerIndex, topLevelDictionary);
+        OFSUUIDWriteDictionaryToStorageLocation(ownerIndex, topLevelDictionary);
     }
     
     return identifier;
@@ -184,15 +188,15 @@ BOOL          SUUIDValidOwnerObject(id object);
  API to determine if a device has opted out of SecureUDID.
  */
 + (BOOL)isOptedOut {
-    for (NSInteger i = 0; i < SUUID_MAX_STORAGE_LOCATIONS; ++i) {
+    for (NSInteger i = 0; i < OFSUUID_MAX_STORAGE_LOCATIONS; ++i) {
         NSDictionary* topLevelDictionary;
         
-        topLevelDictionary = SUUIDDictionaryForStorageLocation(i);
+        topLevelDictionary = OFSUUIDDictionaryForStorageLocation(i);
         if (!topLevelDictionary) {
             continue;
         }
         
-        if ([[topLevelDictionary objectForKey:SUUIDOptOutKey] boolValue] == YES) {
+        if ([[topLevelDictionary objectForKey:OFSUUIDOptOutKey] boolValue] == YES) {
             return YES;
         }
     }
@@ -204,7 +208,7 @@ BOOL          SUUIDValidOwnerObject(id object);
  Applies the operation (encrypt or decrypt) to the NSData value with the provided NSData key
  and returns the value as NSData.
  */
-NSData *SUUIDCryptorToData(CCOperation operation, NSData *value, NSData *key) {
+NSData *OFSUUIDCryptorToData(CCOperation operation, NSData *value, NSData *key) {
     NSMutableData *output = [NSMutableData dataWithLength:value.length + kCCBlockSizeAES128];
 
     size_t numBytes = 0;
@@ -231,10 +235,10 @@ NSData *SUUIDCryptorToData(CCOperation operation, NSData *value, NSData *key) {
  Applies the operation (encrypt or decrypt) to the NSData value with the provided NSData key
  and returns the value as an NSString.
  */
-NSString *SUUIDCryptorToString(CCOperation operation, NSData *value, NSData *key) {
+NSString *OFSUUIDCryptorToString(CCOperation operation, NSData *value, NSData *key) {
     NSData* data;
     
-    data = SUUIDCryptorToData(operation, value, key);
+    data = OFSUUIDCryptorToData(operation, value, key);
     if (!data) {
         return nil;
     }
@@ -245,7 +249,7 @@ NSString *SUUIDCryptorToString(CCOperation operation, NSData *value, NSData *key
 /*
  Compute a SHA1 of the input.
  */
-NSData *SUUIDHash(NSData *data) {
+NSData *OFSUUIDHash(NSData *data) {
     uint8_t digest[CC_SHA1_DIGEST_LENGTH] = {0};
     
     CC_SHA1(data.bytes, data.length, digest);
@@ -253,7 +257,7 @@ NSData *SUUIDHash(NSData *data) {
     return [NSData dataWithBytes:digest length:CC_SHA1_DIGEST_LENGTH];
 }
 
-NSData* SUUIDModelHash(void) {
+NSData* OFSUUIDModelHash(void) {
     NSString* result;
     
     result = @"Unknown";
@@ -289,65 +293,65 @@ NSData* SUUIDModelHash(void) {
         free(value);
     } while (0);
     
-    return SUUIDHash([result dataUsingEncoding:NSUTF8StringEncoding]);
+    return OFSUUIDHash([result dataUsingEncoding:NSUTF8StringEncoding]);
 }
 
 /*
  Finds the most recent structure, and adds the Opt-Out flag to it.  Then writes that structure back
  out to all used storage locations, making sure to preserve ownership.
  */
-void SUUIDMarkOptedOut(void) {
+void OFSUUIDMarkOptedOut(void) {
     NSMutableDictionary* mostRecentDictionary;
     
-    mostRecentDictionary = [NSMutableDictionary dictionaryWithDictionary:SUUIDMostRecentDictionary()];
+    mostRecentDictionary = [NSMutableDictionary dictionaryWithDictionary:OFSUUIDMostRecentDictionary()];
     
-    [mostRecentDictionary setObject:[NSDate date]                 forKey:SUUIDTimeStampKey];
-    [mostRecentDictionary setObject:[NSNumber numberWithBool:YES] forKey:SUUIDOptOutKey];
+    [mostRecentDictionary setObject:[NSDate date]                 forKey:OFSUUIDTimeStampKey];
+    [mostRecentDictionary setObject:[NSNumber numberWithBool:YES] forKey:OFSUUIDOptOutKey];
      
-    for (NSInteger i = 0; i < SUUID_MAX_STORAGE_LOCATIONS; ++i) {
+    for (NSInteger i = 0; i < OFSUUID_MAX_STORAGE_LOCATIONS; ++i) {
         NSData* owner;
         
         // Inherit the owner, if it is present.  This makes some schema assumptions.
-        owner = [SUUIDDictionaryForStorageLocation(i) objectForKey:SUUIDOwnerKey];
+        owner = [OFSUUIDDictionaryForStorageLocation(i) objectForKey:OFSUUIDOwnerKey];
         if (owner) {
-            [mostRecentDictionary setObject:owner forKey:SUUIDOwnerKey];
+            [mostRecentDictionary setObject:owner forKey:OFSUUIDOwnerKey];
         }
         
         // write the opt-out data even if the location was previously empty
-        SUUIDWriteDictionaryToStorageLocation(i, mostRecentDictionary);
+        OFSUUIDWriteDictionaryToStorageLocation(i, mostRecentDictionary);
     }
 }
 
-void SUUIDMarkOptedIn(void) {
+void OFSUUIDMarkOptedIn(void) {
     NSDate* accessedDate;
     
     accessedDate = [NSDate date];
     
     // Opting back in is trickier.  We need to remove top-level Opt-Out markers.  Also makes some 
     // schema assumptions.
-    for (NSInteger i = 0; i < SUUID_MAX_STORAGE_LOCATIONS; ++i) {
+    for (NSInteger i = 0; i < OFSUUID_MAX_STORAGE_LOCATIONS; ++i) {
         NSMutableDictionary* dictionary;
         
-        dictionary = [NSMutableDictionary dictionaryWithDictionary:SUUIDDictionaryForStorageLocation(i)];
+        dictionary = [NSMutableDictionary dictionaryWithDictionary:OFSUUIDDictionaryForStorageLocation(i)];
         if (!dictionary) {
-            // This is a possible indiction of storage corruption.  However, SUUIDDictionaryForStorageLocation
+            // This is a possible indiction of storage corruption.  However, OFSUUIDDictionaryForStorageLocation
             // will have already cleaned it up for us, so there's not much to do here.
             continue;
         }
         
-        [dictionary removeObjectForKey:SUUIDOptOutKey];
+        [dictionary removeObjectForKey:OFSUUIDOptOutKey];
         
         // quick check for the minimum set of keys.  If the dictionary previously held just
         // an Opt-Out marker + timestamp, dictionary is not invalid.  Writing will fail in this
         // case, leaving the data that was there.  We need to delete.
-        if (!SUUIDValidTopLevelObject(dictionary)) {
-            SUUIDDeleteStorageLocation(i);
+        if (!OFSUUIDValidTopLevelObject(dictionary)) {
+            OFSUUIDDeleteStorageLocation(i);
             continue;
         }
         
-        [dictionary setObject:accessedDate forKey:SUUIDTimeStampKey];
+        [dictionary setObject:accessedDate forKey:OFSUUIDTimeStampKey];
         
-        SUUIDWriteDictionaryToStorageLocation(i, dictionary);
+        OFSUUIDWriteDictionaryToStorageLocation(i, dictionary);
     }
 }
 
@@ -355,28 +359,28 @@ void SUUIDMarkOptedIn(void) {
  Removes all SecureUDID data from storage with the exception of Opt-Out flags, which
  are never removed.  Removing the Opt-Out flags would effectively opt a user back in.
 */
-void SUUIDRemoveAllSecureUDIDData(void) {
+void OFSUUIDRemoveAllSecureUDIDData(void) {
     NSDictionary* optOutPlaceholder = nil;
     
-    if ([SecureUDID isOptedOut]) {
-        optOutPlaceholder = [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:SUUIDOptOutKey];
+    if ([OFSecureUDID isOptedOut]) {
+        optOutPlaceholder = [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:OFSUUIDOptOutKey];
     }
     
-    for (NSInteger i = 0; i < SUUID_MAX_STORAGE_LOCATIONS; ++i) {
+    for (NSInteger i = 0; i < OFSUUID_MAX_STORAGE_LOCATIONS; ++i) {
         if (optOutPlaceholder) {
-            SUUIDWriteDictionaryToStorageLocation(i, optOutPlaceholder);
+            OFSUUIDWriteDictionaryToStorageLocation(i, optOutPlaceholder);
             continue;
         }
         
-        SUUIDDeleteStorageLocation(i);
+        OFSUUIDDeleteStorageLocation(i);
     }
 }
 
 /*
  Returns an NSString formatted with the supplied number.
  */
-NSString *SUUIDPasteboardNameForNumber(NSInteger number) {
-    return [NSString stringWithFormat:SUUIDPastboardFileFormat, number];
+NSString *OFSUUIDPasteboardNameForNumber(NSInteger number) {
+    return [NSString stringWithFormat:OFSUUIDPastboardFileFormat, number];
 }
 
 /*
@@ -386,22 +390,22 @@ NSString *SUUIDPasteboardNameForNumber(NSInteger number) {
  
  Returns the data dictionary, or nil on failure.
  */
-NSDictionary *SUUIDDictionaryForStorageLocation(NSInteger number) {
+NSDictionary *OFSUUIDDictionaryForStorageLocation(NSInteger number) {
     id            decodedObject;
     UIPasteboard* pasteboard;
     NSData*       data;
     
     // Don't even bother if the index is outside our limits
-    if (number < 0 || number >= SUUID_MAX_STORAGE_LOCATIONS) {
+    if (number < 0 || number >= OFSUUID_MAX_STORAGE_LOCATIONS) {
         return nil;
     }
     
-    pasteboard = [UIPasteboard pasteboardWithName:SUUIDPasteboardNameForNumber(number) create:NO];
+    pasteboard = [UIPasteboard pasteboardWithName:OFSUUIDPasteboardNameForNumber(number) create:NO];
     if (!pasteboard) {
         return nil;
     }
     
-    data = [pasteboard valueForPasteboardType:SUUIDTypeDataDictionary];
+    data = [pasteboard valueForPasteboardType:OFSUUIDTypeDataDictionary];
     if (!data) {
         return nil;
     }
@@ -411,13 +415,13 @@ NSDictionary *SUUIDDictionaryForStorageLocation(NSInteger number) {
     } @catch (NSException* exception) {
         // Catching an exception like this is risky.   However, crashing here is 
         // not acceptable, and unarchiveObjectWithData can throw.
-        [pasteboard setData:nil forPasteboardType:SUUIDTypeDataDictionary];
+        [pasteboard setData:nil forPasteboardType:OFSUUIDTypeDataDictionary];
         
         return nil;
     }
     
-    if (!SUUIDValidTopLevelObject(decodedObject)) {
-        [pasteboard setData:nil forPasteboardType:SUUIDTypeDataDictionary];
+    if (!OFSUUIDValidTopLevelObject(decodedObject)) {
+        [pasteboard setData:nil forPasteboardType:OFSUUIDTypeDataDictionary];
         
         return nil;
     }
@@ -425,25 +429,25 @@ NSDictionary *SUUIDDictionaryForStorageLocation(NSInteger number) {
     return decodedObject;
 }
 
-NSDictionary *SUUIDMostRecentDictionary(void) {
+NSDictionary *OFSUUIDMostRecentDictionary(void) {
     NSDictionary* mostRecentDictionary;
     BOOL          found;
     
-    mostRecentDictionary = [NSDictionary dictionaryWithObject:[NSDate distantPast] forKey:SUUIDTimeStampKey];
+    mostRecentDictionary = [NSDictionary dictionaryWithObject:[NSDate distantPast] forKey:OFSUUIDTimeStampKey];
     
     // scan all locations looking for the most recent
-    for (NSUInteger i = 0; i < SUUID_MAX_STORAGE_LOCATIONS; ++i) {
+    for (NSUInteger i = 0; i < OFSUUID_MAX_STORAGE_LOCATIONS; ++i) {
         NSDictionary* dictionary;
         NSDate*       date;
         
-        dictionary = SUUIDDictionaryForStorageLocation(i);
+        dictionary = OFSUUIDDictionaryForStorageLocation(i);
         if (!dictionary) {
             continue;
         }
         
         // Schema assumption
-        date = [dictionary objectForKey:SUUIDTimeStampKey];
-        if ([date compare:[mostRecentDictionary objectForKey:SUUIDTimeStampKey]] == NSOrderedDescending) {
+        date = [dictionary objectForKey:OFSUUIDTimeStampKey];
+        if ([date compare:[mostRecentDictionary objectForKey:OFSUUIDTimeStampKey]] == NSOrderedDescending) {
             mostRecentDictionary = dictionary;
             found = YES;
         }
@@ -461,20 +465,20 @@ NSDictionary *SUUIDMostRecentDictionary(void) {
  SecureUDID structure, and the location must be within range.  A new location is 
  created if is didn't already exist.
  */
-void SUUIDWriteDictionaryToStorageLocation(NSInteger number, NSDictionary* dictionary) {
+void OFSUUIDWriteDictionaryToStorageLocation(NSInteger number, NSDictionary* dictionary) {
     UIPasteboard* pasteboard;
     
     // be sure to respect our limits
-    if (number < 0 || number >= SUUID_MAX_STORAGE_LOCATIONS) {
+    if (number < 0 || number >= OFSUUID_MAX_STORAGE_LOCATIONS) {
         return;
     }
     
     // only write out valid structures
-    if (!SUUIDValidTopLevelObject(dictionary)) {
+    if (!OFSUUIDValidTopLevelObject(dictionary)) {
         return;
     }
     
-    pasteboard = [UIPasteboard pasteboardWithName:SUUIDPasteboardNameForNumber(number) create:YES];
+    pasteboard = [UIPasteboard pasteboardWithName:OFSUUIDPasteboardNameForNumber(number) create:YES];
     if (!pasteboard) {
         return;
     }
@@ -482,22 +486,22 @@ void SUUIDWriteDictionaryToStorageLocation(NSInteger number, NSDictionary* dicti
     pasteboard.persistent = YES;
     
     [pasteboard setData:[NSKeyedArchiver archivedDataWithRootObject:dictionary]
-      forPasteboardType:SUUIDTypeDataDictionary];
+      forPasteboardType:OFSUUIDTypeDataDictionary];
 }
 
 /*
  Clear a storage location, removing anything stored there.  Useful for dealing with
  potential corruption.  Be careful with this function, as it can remove Opt-Out markers.
 */
-void SUUIDDeleteStorageLocation(NSInteger number) {
+void OFSUUIDDeleteStorageLocation(NSInteger number) {
     UIPasteboard* pasteboard;
     NSString*     name;
     
-    if (number < 0 || number >= SUUID_MAX_STORAGE_LOCATIONS) {
+    if (number < 0 || number >= OFSUUID_MAX_STORAGE_LOCATIONS) {
         return;
     }
     
-    name       = SUUIDPasteboardNameForNumber(number);
+    name       = OFSUUIDPasteboardNameForNumber(number);
     pasteboard = [UIPasteboard pasteboardWithName:name create:NO];
     if (!pasteboard)
         return;
@@ -505,7 +509,7 @@ void SUUIDDeleteStorageLocation(NSInteger number) {
     // While setting pasteboard data to nil seems to always remove contents, the 
     // removePasteboardWithName: call doesn't appear to always work.  Using both seems
     // like the safest thing to do
-    [pasteboard setData:nil forPasteboardType:SUUIDTypeDataDictionary];
+    [pasteboard setData:nil forPasteboardType:OFSUUIDTypeDataDictionary];
     [UIPasteboard removePasteboardWithName:name];
 }
 
@@ -516,7 +520,7 @@ void SUUIDDeleteStorageLocation(NSInteger number) {
  - They are destroyed when the application that created them is deleted from the device.
 
  To protect against the latter case, SecureUDID leverages multiple pasteboards (up to
- SUUID_MAX_STORAGE_LOCATIONS), creating one for each distinct domain/app that
+ OFSUUID_MAX_STORAGE_LOCATIONS), creating one for each distinct domain/app that
  leverages the system. The permanence of SecureUDIDs increases exponentially with the
  number of apps that use it.
 
@@ -528,7 +532,7 @@ void SUUIDDeleteStorageLocation(NSInteger number) {
  Once a spot is found, the most-recent data is re-written over this location.  The location
  is then, finally, returned.
  */
-NSInteger SUUIDStorageLocationForOwnerKey(NSData *ownerKey, NSMutableDictionary** ownerDictionary) {
+NSInteger OFSUUIDStorageLocationForOwnerKey(NSData *ownerKey, NSMutableDictionary** ownerDictionary) {
     NSInteger     ownerIndex;
     NSInteger     lowestUnusedIndex;
     NSInteger     oldestUsedIndex;
@@ -548,11 +552,11 @@ NSInteger SUUIDStorageLocationForOwnerKey(NSData *ownerKey, NSMutableDictionary*
     // The array of SecureUDID pasteboards can be sparse, since any number of
     // apps may have been deleted. To find a pasteboard owned by the the current
     // domain, iterate all of them.
-    for (NSInteger i = 0; i < SUUID_MAX_STORAGE_LOCATIONS; ++i) {
+    for (NSInteger i = 0; i < OFSUUID_MAX_STORAGE_LOCATIONS; ++i) {
         NSDate*       modifiedDate;
         NSDictionary* dictionary;
         
-        dictionary = SUUIDDictionaryForStorageLocation(i);
+        dictionary = OFSUUIDDictionaryForStorageLocation(i);
         if (!dictionary) {
             if (lowestUnusedIndex == -1) {
                 lowestUnusedIndex = i;
@@ -562,8 +566,8 @@ NSInteger SUUIDStorageLocationForOwnerKey(NSData *ownerKey, NSMutableDictionary*
         }
         
         // Check the 'modified' timestamp of this pasteboard
-        modifiedDate = [dictionary valueForKey:SUUIDTimeStampKey];
-        optedOut     = optedOut || [[dictionary valueForKey:SUUIDOptOutKey] boolValue];
+        modifiedDate = [dictionary valueForKey:OFSUUIDTimeStampKey];
+        optedOut     = optedOut || [[dictionary valueForKey:OFSUUIDOptOutKey] boolValue];
         
         // Hold a copy of the data if this is the newest we've found so far.
         if ([modifiedDate compare:mostRecentDate] == NSOrderedDescending) {
@@ -578,7 +582,7 @@ NSInteger SUUIDStorageLocationForOwnerKey(NSData *ownerKey, NSMutableDictionary*
         }
         
         // Finally, check if this is the pasteboard owned by the requesting domain.
-        if ([[dictionary objectForKey:SUUIDOwnerKey] isEqual:ownerKey]) {
+        if ([[dictionary objectForKey:OFSUUIDOwnerKey] isEqual:ownerKey]) {
             ownerIndex = i;
         }
     }
@@ -587,7 +591,7 @@ NSInteger SUUIDStorageLocationForOwnerKey(NSData *ownerKey, NSMutableDictionary*
     // likelihood of permanence.
     if (ownerIndex == -1) {
         // Unless there are no available slots, then evict the oldest entry
-        if ((lowestUnusedIndex < 0) || (lowestUnusedIndex >= SUUID_MAX_STORAGE_LOCATIONS)) {
+        if ((lowestUnusedIndex < 0) || (lowestUnusedIndex >= OFSUUID_MAX_STORAGE_LOCATIONS)) {
             ownerIndex = oldestUsedIndex;
         } else {
             ownerIndex = lowestUnusedIndex;
@@ -599,11 +603,11 @@ NSInteger SUUIDStorageLocationForOwnerKey(NSData *ownerKey, NSMutableDictionary*
     
     // make sure our Opt-Out flag is consistent
     if (optedOut) {
-        [*ownerDictionary setObject:[NSNumber numberWithBool:YES] forKey:SUUIDOptOutKey];
+        [*ownerDictionary setObject:[NSNumber numberWithBool:YES] forKey:OFSUUIDOptOutKey];
     }
     
     // Make sure to write the most recent structure to the new location
-    SUUIDWriteDictionaryToStorageLocation(ownerIndex, mostRecentDictionary);
+    OFSUUIDWriteDictionaryToStorageLocation(ownerIndex, mostRecentDictionary);
     
     return ownerIndex;
 }
@@ -611,52 +615,52 @@ NSInteger SUUIDStorageLocationForOwnerKey(NSData *ownerKey, NSMutableDictionary*
 /*
  Attempts to validate the full SecureUDID structure.
  */
-BOOL SUUIDValidTopLevelObject(id object) {
+BOOL OFSUUIDValidTopLevelObject(id object) {
     if (![object isKindOfClass:[NSDictionary class]]) {
         return NO;
     }
     
     // Now, we need to verify the current schema.  There are a few possible valid states:
-    // - SUUIDTimeStampKey + SUUIDOwnerKey + at least one additional key that is not SUUIDOptOutKey
-    // - SUUIDTimeStampKey + SUUIDOwnerKey + SUUIDOptOutKey
+    // - OFSUUIDTimeStampKey + OFSUUIDOwnerKey + at least one additional key that is not OFSUUIDOptOutKey
+    // - OFSUUIDTimeStampKey + OFSUUIDOwnerKey + OFSUUIDOptOutKey
     
-    if ([(NSDictionary *)object objectForKey:SUUIDTimeStampKey] && [(NSDictionary *)object objectForKey:SUUIDOwnerKey]) {
+    if ([(NSDictionary *)object objectForKey:OFSUUIDTimeStampKey] && [(NSDictionary *)object objectForKey:OFSUUIDOwnerKey]) {
         NSMutableDictionary* ownersOnlyDictionary;
         NSData*              ownerField;
         
-        if ([(NSDictionary *)object objectForKey:SUUIDOptOutKey]) {
+        if ([(NSDictionary *)object objectForKey:OFSUUIDOptOutKey]) {
             return YES;
         }
         
         // We have to trust future schema versions.  Note that the lack of a schema version key will
         // always fail this check, since the first schema version was 1.
-        if ([[(NSDictionary *)object objectForKey:SUUIDSchemaVersionKey] intValue] > SUUID_SCHEMA_VERSION) {
+        if ([[(NSDictionary *)object objectForKey:OFSUUIDSchemaVersionKey] intValue] > OFSUUID_SCHEMA_VERSION) {
             return YES;
         }
         
-        ownerField = [(NSDictionary *)object objectForKey:SUUIDOwnerKey];
+        ownerField = [(NSDictionary *)object objectForKey:OFSUUIDOwnerKey];
         if (![ownerField isKindOfClass:[NSData class]]) {
             return NO;
         }
         
         ownersOnlyDictionary = [NSMutableDictionary dictionaryWithDictionary:object];
         
-        [ownersOnlyDictionary removeObjectForKey:SUUIDTimeStampKey];
-        [ownersOnlyDictionary removeObjectForKey:SUUIDOwnerKey];
-        [ownersOnlyDictionary removeObjectForKey:SUUIDOptOutKey];
-        [ownersOnlyDictionary removeObjectForKey:SUUIDModelHashKey];
-        [ownersOnlyDictionary removeObjectForKey:SUUIDSchemaVersionKey];
+        [ownersOnlyDictionary removeObjectForKey:OFSUUIDTimeStampKey];
+        [ownersOnlyDictionary removeObjectForKey:OFSUUIDOwnerKey];
+        [ownersOnlyDictionary removeObjectForKey:OFSUUIDOptOutKey];
+        [ownersOnlyDictionary removeObjectForKey:OFSUUIDModelHashKey];
+        [ownersOnlyDictionary removeObjectForKey:OFSUUIDSchemaVersionKey];
         
         // now, iterate through to verify each internal structure
         for (id key in [ownersOnlyDictionary allKeys]) {
-            if ([key isEqual:SUUIDTimeStampKey] || [key isEqual:SUUIDOwnerKey] || [key isEqual:SUUIDOptOutKey])
+            if ([key isEqual:OFSUUIDTimeStampKey] || [key isEqual:OFSUUIDOwnerKey] || [key isEqual:OFSUUIDOptOutKey])
                 continue;
             
             if (![key isKindOfClass:[NSData class]]) {
                 return NO;
             }
             
-            if (!SUUIDValidOwnerObject([ownersOnlyDictionary objectForKey:key])) {
+            if (!OFSUUIDValidOwnerObject([ownersOnlyDictionary objectForKey:key])) {
                 return NO;
             }
         }
@@ -665,8 +669,8 @@ BOOL SUUIDValidTopLevelObject(id object) {
         return YES;
     }
     
-    // Maybe just the SUUIDOptOutKey, on its own
-    if ([[(NSDictionary *)object objectForKey:SUUIDOptOutKey] boolValue] == YES) {
+    // Maybe just the OFSUUIDOptOutKey, on its own
+    if ([[(NSDictionary *)object objectForKey:OFSUUIDOptOutKey] boolValue] == YES) {
         return YES;
     }
     
@@ -676,12 +680,12 @@ BOOL SUUIDValidTopLevelObject(id object) {
 /*
  Attempts to validate the structure for an "owner dictionary".
  */
-BOOL SUUIDValidOwnerObject(id object) {
+BOOL OFSUUIDValidOwnerObject(id object) {
     if (![object isKindOfClass:[NSDictionary class]]) {
         return NO;
     }
     
-    return [object valueForKey:SUUIDLastAccessedKey] && [object valueForKey:SUUIDIdentifierKey];
+    return [object valueForKey:OFSUUIDLastAccessedKey] && [object valueForKey:OFSUUIDIdentifierKey];
 }
 
 @end

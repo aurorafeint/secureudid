@@ -27,10 +27,14 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  SOFTWARE.
  */
+ 
+/* 
+ Public symbols prefixed with OF for inclusion within the OpenFeint library.
+ */
 
 #import <Foundation/Foundation.h>
 
-@interface SecureUDID : NSObject
+@interface OFSecureUDID : NSObject
 
 /*
  Returns a unique id for the device, sandboxed to the domain and salt provided.  This is a potentially
