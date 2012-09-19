@@ -177,7 +177,7 @@ BOOL          OFSUUIDValidOwnerObject(id object);
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         NSString* identifier;
         
-        identifier = [SecureUDID UDIDForDomain:domain usingKey:key];
+        identifier = [OFSecureUDID UDIDForDomain:domain usingKey:key];
         
         completion(identifier);
     });
